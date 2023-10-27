@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %} Login {% endblock %}
+{% block content %} 
+{% comment %} <form method="post">
+    {% csrf_token %}
+    <table>
+        {{ form.username.label }}
+        {{ form.username }}
+        {{ form.password.label }}
+        {{ form.password }}
+        {{ form.email.label }}
+        {{ form.email }}        
+    </table>
+    <button type='submit'> Login </button>
+</form> {% endcomment %}
+
+<div class='container'>
+    <form method="post" class='col-md-4'>        
+        {% csrf_token %}
+        <h1 class="h3">Please login</h1>
+        
+        <div class="row-md-2">
+            <input type="email" class="form-control mb-2" name="username" placeholder="name@example.com">                
+        </div>
+        <div class="row-md-2">
+            <input type="password" class="form-control mb-4" name="password" placeholder="Password">                
+        </div>
+        
+        <div class="row-md-2">
+        <button class="btn btn-success w-100 py-2" type="submit">Login</button> <br> <br>
+        <div class='container'> <div class='d-flex justify-content-end'> <a href="{% url 'signup' %}" style="font-size: 20px; text-align: right;"> Not registered? </a>  </div>  </div>  
+        </div>
+    </form>
+</div>
+
+
+{% endblock %}
