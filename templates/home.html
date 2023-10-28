@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% load humanize %}
+{% load custom_filters %}
 {% block title %} catalague {% endblock %}
 {% block content %} 
 <h1 class="other_home"> You are absolutely free to select what you want! </h1>
@@ -14,7 +14,7 @@
                     <a href="{% url 'detail' each.pk %}"> <img style="height: 400px;" src="{{ each.image.profile.url }}" alt="{{ each.name }}"> </a> <br><br>
                     <p><strong>Articule: {{ each.name }}</strong></p>             
                     <p>Textile: {{ each.textile }}</p>
-                    <p>Price: {{ each.price|intcomma }} KZT</p> <br>
+                    <p>Price: {{ each.price|thousands_with_spaces }} KZT</p> <br>
                 </div>
             </div>
             {% endfor %}
