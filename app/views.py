@@ -13,7 +13,10 @@ from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from typing import Any
 import json
 from django.contrib import messages
-from datetime import datetime
+from django.core.mail import send_mail
+from django.contrib.auth.tokens import default_token_generator
+
+"""index, catalague, detail pages"""
 
 class Index(View):
     def get(self, request):
@@ -56,6 +59,106 @@ class Home(ListView):
         else:
             return render(request, 'home.html', context)
 
+class Detail(DetailView):
+    model = Product
+    template_name = 'detail.html'
+    context_object_name = 'products'
+    # pk_url_kwarg = 'id'    
+        
+    def get_context_data(self, **kwargs):        
+        sizes = ["XS","S","M","L","XL","2XL","3XL","4XL"]        
+        size_list = []
+        context = super().get_context_data(**kwargs)        
+        product_id = self.object.id
+        Size.objects.all().delete()
+        Size.objects.create(size=product_id)
+        selection_by_articule = Stock.objects.filter(product=product_id)
+        colors = [each.color for each in selection_by_articule]
+        unique_colors = list(set(colors))
+        
+        for color in unique_colors:
+            size_dict = {}
+            size_dict['color'] = color.color
+            for size in sizes:
+                filtered = Stock.objects.filter(product=self.object.id, color=color, size=size)
+                total_quantity = sum(item.quantity for item in filtered)
+                size_dict[size] = total_quantity
+            size_list.append(size_dict)
+        context['size_list'] = size_list
+        context['colors'] = unique_colors
+        
+        additional_images = AdditionalImage.objects.filter(product=product_id)
+        context['additional_images'] = additional_images        
+        return context
+        
+    def post(self, request, pk):        
+        form = OrderForm(request.POST)
+        
+        if form['color'] != '' and form['size'] != '' and form['order_quantity'] != '':
+            if form.is_valid():            
+                color = form.cleaned_data['color']
+                size = form.cleaned_data['size']
+                order_quantity = form.cleaned_data['order_quantity']
+                products = pk                
+                clients = request.user.id                
+                product_query = Product.objects.get(pk=products)
+                price = product_query.price
+                subtotal = price * order_quantity
+                
+                if request.user.is_authenticated:
+                    Order.objects.create(clients_id=clients, products_id=products, color=color, size=size, order_quantity=order_quantity, price=price, subtotal=subtotal)
+                    quantity_to_delete = -order_quantity
+                    color_query = Color.objects.get(color=color)                    
+                    Stock.objects.create(product=product_query, color=color_query, size=size, quantity=quantity_to_delete)                    
+                    return redirect('home')
+                else:                
+                    request.session['first_buy'] = {'product':products, 'color':color, 'size':size, 'quantity':order_quantity, 'price':price, 'subtotal':subtotal}
+                    print('session is below product')
+                    print(request.session['first_buy']['product'])
+                    return redirect('login')                                
+        else:
+            context = {'form':form}
+            return render(request, 'detail.html', context)
+
+def get_available_sizes(request):
+    all_sizes = ["XS","S","M","L","XL","2XL","3XL","4XL"]
+    available_sizes = []
+    selected_color = request.GET.get('color')
+    if selected_color:
+        product_ids = Size.objects.all().values_list('size', flat=True)
+        product_id = int(product_ids[0])
+        selected = Color.objects.filter(color = selected_color).values_list('id', flat=True)
+        selected_color_id = int(selected[0])
+        print(product_id)
+        print(selected_color_id)
+        filtered_by_color = Stock.objects.filter(product = product_id, color_id = selected_color_id)
+        sizes = [each.size for each in filtered_by_color]
+        available = list(set(sizes))
+        for each in all_sizes:
+            if each in available:
+                available_sizes.append(each)
+        print(available_sizes)
+        return JsonResponse({'size': available_sizes, 'product_id': product_id, 'color_id': selected_color_id})
+    else:
+        return JsonResponse({'size': available_sizes})
+
+def get_available_quantities(request):      
+    selected_size = request.GET.get('size')
+    if selected_size:
+        response = get_available_sizes(request)
+        data = json.loads(response.content.decode('utf-8'))
+        product_id = data['product_id']
+        color_id = data['color_id']
+        filtered_by_size = Stock.objects.filter(product = product_id, color = color_id, size = selected_size)
+        quantity = sum([each.quantity for each in filtered_by_size])
+        quantity_to_select = [x for x in range(1, quantity + 1)]    
+        print(quantity_to_select)        
+        return JsonResponse({'quantity': quantity_to_select})
+    else:
+        return JsonResponse({'quantity': ''})
+
+"""Adding, Deleting, Updating done by Admin side""" 
+
 class AddProduct(View):     
     def get(self, request):
         form= AddProductForm()
@@ -77,14 +180,12 @@ class AddProduct(View):
         else:
             return render(request, 'addproduct.html', {'form':form})
 
-class AddImage(CreateView):
-    # template_name = 'addimage.html'
-    # form_class = AddImageForm
-    # success_url =  reverse_lazy('addimage', kwargs={'pk': 'your_primary_key_value'})
-    # context_object_name = 'additional_images'
+class Delete(DeleteView):
+    model = Product
+    template_name = 'confirmation.html'
+    success_url = reverse_lazy('home')
 
-    # def get_success_url(self):
-    #     return reverse_lazy('addimage', kwargs={'pk': self.object.pk})
+class AddImage(CreateView):
     
     def post(self, request, product_pk):
         form = AddImageForm(request.POST, request.FILES)
@@ -162,16 +263,16 @@ class AddTextile(CreateView):
         context['textiles'] = Textile.objects.all()
         return context   
 
-class AddSize(CreateView):
-    model = Size
-    form_class = AddSizeForm
-    template_name = 'addsize.html'
-    success_url = reverse_lazy('addsize')
+# class AddSize(CreateView):
+#     model = Size
+#     form_class = AddSizeForm
+#     template_name = 'addsize.html'
+#     success_url = reverse_lazy('addsize')
     
-    def get_context_data(self, **kwargs):        
-        context = super().get_context_data(**kwargs)
-        context['sizes'] = Size.objects.all()
-        return context
+#     def get_context_data(self, **kwargs):        
+#         context = super().get_context_data(**kwargs)
+#         context['sizes'] = Size.objects.all()
+#         return context
 
 class AddColor(CreateView):
     model = Color
@@ -189,91 +290,77 @@ class DeleteColorView(DeleteView):
     template_name = 'delete_color.html'
     success_url = reverse_lazy('home')
 
+class Update(UpdateView):
+    model = Product
+    template_name = 'update.html'
+    form_class = UpdateForm
+    success_url = reverse_lazy('detail', kwargs={'pk': 'your_primary_key_value'})
+
+    def get_success_url(self):
+        return reverse_lazy('detail', kwargs={'pk': self.object.pk})
+
+""" User authorization, authentication classes """
+
 class SignUp(CreateView):
     model = User
     form_class = SignUpForm
     template_name = 'signup.html'
     success_url = reverse_lazy('login')
     
+    def send_verification_email(self, user):
+        token = default_token_generator.make_token(user)
+        verify_url = self.request.build_absolute_uri(f'/verify/{user.pk}/{token}/')
+        subject = 'verify your email'
+        message = f'Hello {user.username}, plase click the link below to verify your email :\n\n{verify_url}'        
+        send_mail(subject, message, 'medet20231020@gmail.com', [user.username])
+    
     def form_valid(self, form):
-        print("Form is valid.")
-        print("Data: ", form.cleaned_data)
-        return super().form_valid(form)    
-
+        response = super().form_valid(form)
+        user = self.object
+        user.is_active = False
+        print(user.is_active)
+        user.email = user.username
+        user.save()
+        self.send_verification_email(user)                
+        return response              
+    
 class Login(LoginView):
     template_name = 'login.html'
     authetication_form = LoginForm
     next_page = 'home'
-    
 
 class Logout(LogoutView):
     next_page = 'home'
+
+class VerifyEmailView(View):
+    def get(self, request, user_pk, token):
+        user = User.objects.get(pk=user_pk)
+        if default_token_generator.check_token(user, token):
+            user.is_active = True
+            user.save()
+            return redirect('verify_success')
+        else:
+            return redirect('verify_error')
+
+class VerifySuccessView(View):
+    def get(self, request):        
+        return render(request, 'verify_success.html')
+
+class VerifyErrorView(View):
+    def get(self, request):        
+        return render(request, 'verify_error.html')
 
 class Users(ListView):
     model = User
     template_name = 'users.html'
     context_object_name = 'users'
 
-class Detail(DetailView):
-    model = Product
-    template_name = 'detail.html'
-    context_object_name = 'products'
-    # pk_url_kwarg = 'id'    
-        
-    def get_context_data(self, **kwargs):        
-        sizes = ["XS","S","M","L","XL","2XL","3XL","4XL"]        
-        size_list = []
-        context = super().get_context_data(**kwargs)        
-        product_id = self.object.id
-        Size.objects.all().delete()
-        Size.objects.create(size=product_id)
-        selection_by_articule = Stock.objects.filter(product=product_id)
-        colors = [each.color for each in selection_by_articule]
-        unique_colors = list(set(colors))
-        
-        for color in unique_colors:
-            size_dict = {}
-            size_dict['color'] = color.color
-            for size in sizes:
-                filtered = Stock.objects.filter(product=self.object.id, color=color, size=size)
-                total_quantity = sum(item.quantity for item in filtered)
-                size_dict[size] = total_quantity
-            size_list.append(size_dict)
-        context['size_list'] = size_list
-        context['colors'] = unique_colors
-        
-        additional_images = AdditionalImage.objects.filter(product=product_id)
-        context['additional_images'] = additional_images        
-        return context
-        
-    def post(self, request, pk):        
-        form = OrderForm(request.POST)
-        
-        if form['color'] != '' and form['size'] != '' and form['order_quantity'] != '':
-            if form.is_valid():            
-                color = form.cleaned_data['color']
-                size = form.cleaned_data['size']
-                order_quantity = form.cleaned_data['order_quantity']
-                products = pk                
-                clients = request.user.id                
-                product_query = Product.objects.get(pk=products)
-                price = product_query.price
-                subtotal = price * order_quantity
-                
-                if request.user.is_authenticated:
-                    Order.objects.create(clients_id=clients, products_id=products, color=color, size=size, order_quantity=order_quantity, price=price, subtotal=subtotal)
-                    quantity_to_delete = -order_quantity
-                    color_query = Color.objects.get(color=color)                    
-                    Stock.objects.create(product=product_query, color=color_query, size=size, quantity=quantity_to_delete)                    
-                    return redirect('home')
-                else:                
-                    request.session['first_buy'] = {'product':products, 'color':color, 'size':size, 'quantity':order_quantity, 'price':price, 'subtotal':subtotal}
-                    print('session is below product')
-                    print(request.session['first_buy']['product'])
-                    return redirect('login')                                
-        else:
-            context = {'form':form}
-            return render(request, 'detail.html', context)
+class UsersDelete(DeleteView):
+    model = User
+    template_name = 'delete_users.html'
+    success_url = reverse_lazy('users')
+
+"""Order, basket, buy classes"""
 
 class Basket(View):    
     def get(self, request, user_pk):
@@ -286,8 +373,8 @@ class Basket(View):
     def post(self, request, user_pk):
         basket = Order.objects.filter(clients=user_pk)        
         for a in basket:
-            BoughtProduct.objects.create(quantity=a.order_quantity, color=a.color, size=a.size, clients=a.clients, products=a.products, price=a.price, subtotal=a.subtotal) 
-                
+            BoughtProduct.objects.create(quantity=a.order_quantity, color=a.color, size=a.size, clients=a.clients, products=a.products, price=a.price, subtotal=a.subtotal)
+
         Order.objects.filter(clients=user_pk).delete()
         total_value = sum([x.subtotal for x in basket])       
         context = {'bought':basket, 'total':total_value}
@@ -296,9 +383,9 @@ class Basket(View):
 class Bought(View):
     def get(self, request, user_pk):        
         return render(request, 'bought.html')
-    
+
 class DeleteOrder(DeleteView):
-    
+
     def get(self, request, user_pk, order_pk):
         order_to_delete = Order.objects.get(pk=order_pk)
         context = {'order_to_delete':order_to_delete}
@@ -318,58 +405,7 @@ class DeleteOrder(DeleteView):
         basket = Order.objects.filter(clients=user_pk)
         total_value = sum([x.subtotal for x in basket])        
         context = {'basket':basket, 'total':total_value}
-        return render(request, 'basket.html', context) 
-    
-def get_available_sizes(request):
-    all_sizes = ["XS","S","M","L","XL","2XL","3XL","4XL"]
-    available_sizes = []
-    selected_color = request.GET.get('color')
-    if selected_color:
-        product_ids = Size.objects.all().values_list('size', flat=True)
-        product_id = int(product_ids[0])
-        selected = Color.objects.filter(color = selected_color).values_list('id', flat=True)
-        selected_color_id = int(selected[0])
-        print(product_id)
-        print(selected_color_id)
-        filtered_by_color = Stock.objects.filter(product = product_id, color_id = selected_color_id)
-        sizes = [each.size for each in filtered_by_color]
-        available = list(set(sizes))
-        for each in all_sizes:
-            if each in available:
-                available_sizes.append(each)
-        print(available_sizes)
-        return JsonResponse({'size': available_sizes, 'product_id': product_id, 'color_id': selected_color_id})
-    else:
-        return JsonResponse({'size': available_sizes})
-
-def get_available_quantities(request):      
-    selected_size = request.GET.get('size')
-    if selected_size:
-        response = get_available_sizes(request)
-        data = json.loads(response.content.decode('utf-8'))
-        product_id = data['product_id']
-        color_id = data['color_id']
-        filtered_by_size = Stock.objects.filter(product = product_id, color = color_id, size = selected_size)
-        quantity = sum([each.quantity for each in filtered_by_size])
-        quantity_to_select = [x for x in range(1, quantity + 1)]    
-        print(quantity_to_select)        
-        return JsonResponse({'quantity': quantity_to_select})
-    else:
-        return JsonResponse({'quantity': ''})
-    
-class Update(UpdateView):
-    model = Product
-    template_name = 'update.html'
-    form_class = UpdateForm
-    success_url = reverse_lazy('detail', kwargs={'pk': 'your_primary_key_value'})
-
-    def get_success_url(self):
-        return reverse_lazy('detail', kwargs={'pk': self.object.pk})
-    
-class Delete(DeleteView):
-    model = Product
-    template_name = 'confirmation.html'
-    success_url = reverse_lazy('home')
+        return render(request, 'basket.html', context)    
 
 def test(request):
     pass    

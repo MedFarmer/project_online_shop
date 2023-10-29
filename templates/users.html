@@ -2,10 +2,22 @@
 
 {% block title %} Users {% endblock %}
 {% block content %} 
+<table class="table table-bordered table-striped">
+    <tr>
+        <th> User Id</th>
+        <th> First name</th>
+        <th> Last name</th>
+        <th> Username</th>
+        <th> Delete</th>
+    </tr>
     {% for user in users %}
-    <ul>
-        <li> {{ user.id }} {{ user.first_name }} {{user.last_name}} {{user.username}}</li>
-    </ul>
+    <tr>
+        <td> {{ user.id }} </td>
+        <td> {{ user.first_name }} </td>
+        <td> {{user.last_name}} </td>
+        <td> {{user.username}}</td>
+        <td> <a href="{% url 'delete_users' user.pk %}"> Delete</a></td>        
+    </tr>
     {% endfor %}
-    
+</table>
 {% endblock %}

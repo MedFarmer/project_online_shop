@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% load humanize %}
+{% load custom_filters %}
 {% block title %} Details {% endblock %}
 {% block content %}
 <div class="container-fluid">
@@ -34,7 +34,7 @@
                 </tr>
                 <tr>
                     <th>Price: </th>
-                    <td>{{ products.price|intcomma }} KZT </td>
+                    <td>{{ products.price|thousands_with_spaces }} KZT </td>
                 </tr>
                 <tr>
                     <th> </th>

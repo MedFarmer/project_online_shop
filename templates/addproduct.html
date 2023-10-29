@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize %}
+{% load custom_filters %}
 {% block title %} Add goods to catalague {% endblock %}
 {% block content %} 
     <div> 
@@ -28,7 +28,7 @@
                 <tr> 
                     <th> ID </th>
                     <th> Articule </th>
-                    <th> Price </th>                    
+                    <th> Price, KZT </th>                    
                     <th> Textile </th>
                     <th> Desciption </th>
                     <th> Image </th>
@@ -39,8 +39,8 @@
             {% for each in info %}
                 <tr>
                     <td> {{ each.id}} </td> 
-                    <td> {{ each.name }} </td>
-                    <td> {{ each.price|intcomma }} </td>                    
+                    <td style='width:140px;'> {{ each.name }} </td>
+                    <td style='width:100px;'> {{ each.price|thousands_with_spaces }} </td>                    
                     <td> {{ each.textile }} </td>
                     <td> {{ each.description }} </td>
                     <td> <img src='{{ each.image.lenta.url }}' height='150px'> </td>

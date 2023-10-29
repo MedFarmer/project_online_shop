@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import Home, AddProduct, AddStock, test, SignUp, Logout, Users, Login, Detail, Update, Delete, AddTextile, AddColor, AddSize, AddImage, \
-    AddImageDelete, Basket, DeleteOrder, DeleteColorView, Bought, Index, get_available_sizes, get_available_quantities
+from django.contrib.auth import views as auth_views
+from .views import Home, AddProduct, AddStock, test, SignUp, Logout, Users, UsersDelete, Login, Detail, Update, Delete, AddTextile, AddColor, AddImage, \
+    AddImageDelete, Basket, DeleteOrder, DeleteColorView, Bought, Index, VerifyEmailView, VerifySuccessView, VerifyErrorView, get_available_sizes, get_available_quantities
 
 urlpatterns = [
     path('', Index.as_view(), name='index'),
@@ -9,13 +10,13 @@ urlpatterns = [
     path('addstock/', AddStock.as_view(), name='addstock'),
     path('addtextile/', AddTextile.as_view(), name='addtextile'),
     path('addcolor/', AddColor.as_view(), name='addcolor'),
-    path('addcolor/delete_color/<int:pk>/', DeleteColorView.as_view(), name='delete_color'),
-    path('addsize/', AddSize.as_view(), name='addsize'),    
+    path('addcolor/delete_color/<int:pk>/', DeleteColorView.as_view(), name='delete_color'),     
     path('test/', test, name='test'),
     path('signup/', SignUp.as_view(), name='signup'),
     path('login/', Login.as_view(), name='login'),
     path('logout/', Logout.as_view(), name='logout'),
     path('users/', Users.as_view(), name='users'),
+    path('users/<int:pk>/delete/', UsersDelete.as_view(), name='delete_users'),
     path('detail/<int:pk>/', Detail.as_view(), name='detail'),
     path('detail/<int:pk>/update/', Update.as_view(), name='update'),
     path('detail/<int:pk>/delete/', Delete.as_view(), name='delete'),
@@ -26,5 +27,14 @@ urlpatterns = [
     path('basket/<int:user_pk>/', Basket.as_view(), name='basket'),
     path('basket/<int:user_pk>/delete_order/<int:order_pk>/', DeleteOrder.as_view(), name='delete_order'),
     path('basket/<int:user_pk>/bought/', Bought.as_view(), name='bought'),
+    path('verify/<int:user_pk>/<str:token>/', VerifyEmailView.as_view(), name='verify_email'),
+    path('verification_success/', VerifySuccessView.as_view(), name='verify_success'),
+    path('verification_error/', VerifyErrorView.as_view(), name='verify_error'),
+        
+    path('password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
+    path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
 ]
+
 

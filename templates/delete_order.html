@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load humanize %}
+{% load custom_filters %}
 {% block title %} delete order {% endblock %}
 {% block content %} 
 <div class="container mt-5">
@@ -28,11 +28,11 @@
                             </tr>
                             <tr> 
                                 <th> Price </th>
-                                <td> {{ order_to_delete.price|intcomma }}</td>
+                                <td> {{ order_to_delete.price|thousands_with_spaces }}</td>
                             </tr>
                             <tr> 
                                 <th> for total </th>
-                                <td> {{ order_to_delete.subtotal|intcomma }}</td>
+                                <td> {{ order_to_delete.subtotal|thousands_with_spaces }}</td>
                             </tr>
                         </table>
                         

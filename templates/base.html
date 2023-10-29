@@ -90,6 +90,9 @@
                                 <li><a class="dropdown-item" href="{% url 'basket' user_pk=request.user.id %}">basket</a></li>                                                        
                             </ul>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" aria-current="page" href="{% url 'logout' %}"> <span class="badge text-bg-warning rounded-pill">Logout</span> </a>
+                            </li>
                         {% else %}
                         <li class="nav-item">
                             <a class="nav-link active" aria-current="page" href="{% url 'login' %}"><span class="badge text-bg-success rounded-pill">Login</span></a>
@@ -98,9 +101,7 @@
                             <a class="nav-link active" aria-current="page" href="{% url 'signup' %}"><span class="badge text-bg-success rounded-pill">Signup</span></a>
                         </li>          
                         {% endif %}
-                        <li class="nav-item">
-                            <a class="nav-link active" aria-current="page" href="{% url 'logout' %}"> <span class="badge text-bg-warning rounded-pill">Logout</span> </a>
-                        </li>
+                        
                     </ul>                
                 </div>
             </div>
