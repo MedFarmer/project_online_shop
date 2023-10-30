@@ -361,6 +361,7 @@ class UsersDelete(DeleteView):
     success_url = reverse_lazy('users')
 
 """Order, basket, buy classes"""
+from .signals import purchase_signal
 
 class Basket(View):    
     def get(self, request, user_pk):
@@ -378,6 +379,7 @@ class Basket(View):
         Order.objects.filter(clients=user_pk).delete()
         total_value = sum([x.subtotal for x in basket])       
         context = {'bought':basket, 'total':total_value}
+        purchase_signal.send(sender=request.user, user=request.user, context=context)
         return render(request, 'bought.html', context)
 
 class Bought(View):

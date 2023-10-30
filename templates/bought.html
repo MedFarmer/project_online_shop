@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% load humanize %}
+{% load custom_filters %}
 {% block title %} order {% endblock %}
 {% block content %}
-<h4> Dear <strong class="text-warning">{{ request.user }}! </strong></h4> <br>
+<h4> Dear <strong class="text-warning">{{ request.user.first_name }}! </strong></h4> <br>
 <h4> Thank you for buying dressess!!! Hope you enjoy!!!  </h4><br><br>
 <div class="table-responsive" style="width:1000px;">
     <table class="table table-bordered table-striped">
@@ -25,8 +25,8 @@
             <td> {{ each.color }} </td>
             <td> {{ each.size }} </td>
             <td> {{ each.order_quantity }} </td>
-            <td> {{ each.price|intcomma }} </td>
-            <td> {{ each.subtotal|intcomma }} </td>
+            <td> {{ each.price|thousands_with_spaces }} </td>
+            <td> {{ each.subtotal|thousands_with_spaces }} </td>
             <td> <img src='{{ each.products.image.lenta.url }}' height='150px'> </td>
             
         </tr>
@@ -39,7 +39,7 @@
             <td> </td>
             <td> </td>
             <td><strong> Total </strong></td>
-            <td><strong> {{ total|intcomma }}</strong></td>
+            <td><strong> {{ total|thousands_with_spaces }}</strong></td>
             <td> </td>
             <td> </td>
         </th>
